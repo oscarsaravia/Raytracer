@@ -173,31 +173,31 @@ def dword(d):
   """
   return struct.pack('=l', d)
 
-def ccolor(r, g, b):
-  return bytes([b, g, r])
+def ccolor(v):
+  return max(0, min(255, int(v)))
 
 class color(object):
-  def init(self,r,g,b = None):
+  def __init__(self,r,g,b):
     self.r = r
     self.g = g 
     self.b = b
 
-  def repr(self):
+  def __repr__(self):
     b = ccolor(self.b)
     g = ccolor(self.g)
     r = ccolor(self.r)
     return "color(%s, %s, %s)" % (r, g, b)
 
-  def add(self, other):
-    b = ccolor(self.b + other.b)
-    g = ccolor(self.g + other.g)
+  def __add__(self, other):
     r = ccolor(self.r + other.r)
+    g = ccolor(self.g + other.g)
+    b = ccolor(self.b + other.b)
     return color(r,g,b)
 
-  def mul(self, other):
-    b = ccolor(self.b * other)
-    g = ccolor(self.g * other)
+  def __mul__(self, other):
     r = ccolor(self.r * other)
+    g = ccolor(self.g * other)
+    b = ccolor(self.b * other)
     return color(r,g,b)
 
   def toBytes(self):
@@ -232,7 +232,7 @@ def writeBMP(filename, width, height, pixels):
   # Pixel data (width x height x 3 pixels)
   for x in range(height):
     for y in range(width):
-      f.write(pixels[x][y])
+      f.write(pixels[x][y].toBytes())
   f.close()
 
 
@@ -251,7 +251,7 @@ def refract(I, N, refractive_index):
     etai, etat = etat, etai
     N = mul(N, -1)
   eta = etai/etat
-  k = 1 - eta**2 (1-cosi**2)
+  k = 1 - eta**2 * (1-cosi**2)
   if k<0:
     return None
   
@@ -260,11 +260,11 @@ def refract(I, N, refractive_index):
     mul(N, (eta*cosi) + k**0.5)
   )
 class Material(object):
-  def __init__(self, diffuse, albedo, spec, reftractive_index):
+  def __init__(self, diffuse, albedo, spec, refractive_index = 0):
     self.diffuse = diffuse
     self.albedo = albedo
     self.spec = spec
-    self.reftractive_index = reftractive_index
+    self.refractive_index = refractive_index
 
 class Intersect(object):
   def __init__(self, distance, point, normal):

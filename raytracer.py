@@ -2,6 +2,7 @@ from lib import *
 from math import pi, tan
 from random import random
 from shpere import *
+from plane import *
 
 BLACK = color(0, 0, 0)
 MAX_RECURSION_DEPTH = 3
@@ -34,7 +35,7 @@ class Raytracer(object):
     light_dir = norm(sub(self.light.position, intersect.point))
     offset_normal = mul(intersect.normal, 1.1)
     shadow_orig = sum(intersect.point, offset_normal) \
-      if dot(light_dir, intersect.normal) > 0 \
+      if dot(light_dir, intersect.normal) >= 0 \
       else sub(intersect.point, offset_normal)
     shadow_material, shadow_intersect = self.scene_intersect(shadow_orig, light_dir)
     if shadow_material is None:
@@ -46,14 +47,27 @@ class Raytracer(object):
       reverse_direction = mul(direction, -1)
       reflect_direction = reflect(reverse_direction, intersect.normal)
       reflect_origin = sum(intersect.point, offset_normal) \
-        if dot(reflect_direction, intersect.normal) > 0 \
+        if dot(reflect_direction, intersect.normal) >= 0 \
         else sub(intersect.point, offset_normal)
       reflect_color = self.cast_ray(reflect_origin, reflect_direction, recursion + 1)
     else:
       reflect_color = color(0, 0, 0)
+    
+    if material.albedo[3] > 0:
+      refract_direction = refract(direction, intersect.normal, material.refractive_index)
+      if refract_direction is None:
+        refract_color = color(0, 0, 0)
+      else :
+        refract_origin = sum(intersect.point, offset_normal) \
+          if dot(refract_direction, intersect.normal) >= 0 \
+          else sub(intersect.point, offset_normal)
+        refract_color = self.cast_ray(refract_origin, refract_direction, recursion + 1)
+    else:
+      refract_color = color(0, 0, 0)
       
 
-    diffuse_intensity = self.light.intensity * max(0, dot(light_dir, intersect.normal)) * (1 - shadow_intensity)
+    diffuse_intensity = self.light.intensity * max(0, dot(light_dir, intersect.normal)) \
+                        * (1 - shadow_intensity)
     if shadow_intensity > 0:
       specular_intensity = 0
     else:
@@ -63,20 +77,12 @@ class Raytracer(object):
       )
       
     # diffuse = material.diffuse * intensity
-    diffuse = color(
-      int(material.diffuse[2] * diffuse_intensity * material.albedo[0]),
-      int(material.diffuse[1] * diffuse_intensity * material.albedo[0]),
-      int(material.diffuse[0] * diffuse_intensity * material.albedo[0]),
-    )
+    diffuse = material.diffuse * diffuse_intensity * material.albedo[0]
     specular = self.light.color * specular_intensity * material.albedo[1]
     reflection = reflect_color * material.albedo[2]
-    refraction = 
-    c = diffuse + specular + reflection
+    refraction = refract_color * material.albedo[3]
+    c = diffuse + specular + reflection + refraction
     return c
-    if (material):
-      return material.diffuse
-    else:
-      return self.background_color
 
   def scene_intersect(self, origin, direction):
     zbuffer = float('inf')
@@ -115,12 +121,12 @@ r.light = Light(
 ivory = Material(diffuse=color(100, 100, 80), albedo=[0.6, 0.3, 0.1, 0], spec=50)
 rubber = Material(diffuse=color(80, 0, 0), albedo=[0.9, 0.1, 0.0, 0], spec=10)
 mirror = Material(diffuse=color(255, 255, 255), albedo=[0, 10, 0.8, 0], spec=1500)
-glass = Material(diffuse=color(255, 255, 255), albedo=[0, 0.5, 0.1, 0.8], spec=1500, reftractive_index)
+glass = Material(diffuse=color(255, 255, 255), albedo=[0, 0.5, 0.1, 0.8], spec=1500, refractive_index=1.5)
 # m = Material(diffuse=color(255, 255, 0), albedo=[0.1])
 # s = Sphere(V3(-3, 0, -16), 2, m)
 r.scene = [
   Sphere(V3(0, -1.5, -10), 1.5, ivory),
-  Sphere(V3(-2, 1, -12), 2, mirror),
+  Sphere(V3(-2, 1, -12), 2, glass),
   Sphere(V3(1, 1, -8), 1.7, rubber),
   Sphere(V3(0, 5, -20), 5, mirror),
 ]
